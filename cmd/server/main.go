@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 
@@ -19,19 +20,38 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Successfully connected to RabbitMQ")
 
+	gamelogic.PrintServerHelp()
 	channel, err := conn.Channel()
 	if err != nil {
 		log.Fatalf("could not create channel: %v", err)
 	}
 
-	err = pubsub.PublishJSON(channel, string(routing.ExchangePerilDirect), string(routing.PauseKey), routing.PlayingState{IsPaused: true})
+	_, _, err = pubsub.DeclareAndBind(conn, routing.ExchangePerilDirect, "game_logs", "game_logs.*", pubsub.DurableQueue)
 	if err != nil {
-		log.Fatalf("could not create publish time: %v", err)
+		log.Fatalf("error binding queue: %v", err)
 	}
 
-	// signalChan := make(chan os.Signal, 1)
-	// signal.Notify(signalChan, os.Interrupt)
-	// <-signalChan
-
-	fmt.Println("Pause message sent")
+	quitloop := false
+	for !quitloop {
+		input := gamelogic.GetInput()
+		switch input[0] {
+		case "pause":
+			err = pubsub.PublishJSON(channel, string(routing.ExchangePerilDirect), string(routing.PauseKey), routing.PlayingState{IsPaused: true})
+			if err != nil {
+				log.Fatalf("could not create publish time: %v", err)
+			}
+			fmt.Println("Pause message sent.")
+		case "resume":
+			err = pubsub.PublishJSON(channel, string(routing.ExchangePerilDirect), string(routing.PauseKey), routing.PlayingState{IsPaused: false})
+			if err != nil {
+				log.Fatalf("could not create publish time: %v", err)
+			}
+			fmt.Println("Resume message sent.")
+		case "quit":
+			fmt.Println("Exiting...")
+			quitloop = true
+		default:
+			fmt.Println("Invalid command.")
+		}
+	}
 }
