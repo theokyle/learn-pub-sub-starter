@@ -45,6 +45,28 @@ func main() {
 
 	game := gamelogic.NewGameState(username)
 
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilDirect,
+		fmt.Sprintf("%s.%s", routing.PauseKey, username),
+		routing.PauseKey,
+		pubsub.SimpleQueueTransient,
+		handlerPause(game))
+	if err != nil {
+		log.Fatalf("Error subscribing to connection: %v", err)
+	}
+
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username),
+		fmt.Sprintf("%s.*", routing.ArmyMovesPrefix),
+		pubsub.SimpleQueueTransient,
+		handlerMove(game))
+	if err != nil {
+		log.Fatalf("Error subscribing to connection: %v", err)
+	}
+
 	isRunning := true
 
 	for isRunning {
@@ -61,10 +83,17 @@ func main() {
 				fmt.Println(err)
 			}
 		case "move":
-			_, err = game.CommandMove(words)
+			mv, err := game.CommandMove(words)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Printf("Error moving piece: %v", err)
+				continue
 			}
+			err = pubsub.PublishJSON(ch, string(routing.ExchangePerilTopic), fmt.Sprintf("army_moves.%s", username), mv)
+			if err != nil {
+				fmt.Printf("Error publishing move: %v", err)
+				continue
+			}
+			fmt.Println("Move published succesfully")
 		case "status":
 			game.CommandStatus()
 		case "help":
