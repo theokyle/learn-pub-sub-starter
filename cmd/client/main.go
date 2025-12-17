@@ -62,7 +62,19 @@ func main() {
 		fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username),
 		fmt.Sprintf("%s.*", routing.ArmyMovesPrefix),
 		pubsub.SimpleQueueTransient,
-		handlerMove(game))
+		handlerMove(game, ch))
+	if err != nil {
+		log.Fatalf("Error subscribing to connection: %v", err)
+	}
+
+	err = pubsub.SubscribeJSON(
+		conn,
+		string(routing.ExchangePerilTopic),
+		string(routing.WarRecognitionsPrefix),
+		fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix),
+		pubsub.SimpleQueueDurable,
+		handlerWar(game),
+	)
 	if err != nil {
 		log.Fatalf("Error subscribing to connection: %v", err)
 	}
