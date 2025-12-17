@@ -28,18 +28,19 @@ func main() {
 		log.Fatalf("Error establishing channel: %v", err)
 	}
 
-	_, _, err = pubsub.DeclareAndBind(
+	gamelogic.PrintServerHelp()
+
+	err = pubsub.SubscribeGob(
 		conn,
-		routing.ExchangePerilTopic,
-		routing.GameLogSlug,
+		string(routing.ExchangePerilTopic),
+		string(routing.GameLogSlug),
 		fmt.Sprintf("%s.*", routing.GameLogSlug),
 		pubsub.SimpleQueueDurable,
+		handlerLog,
 	)
 	if err != nil {
-		log.Fatalf("Error declaring queue: %v", err)
+		log.Fatalf("Error subscribing to connection: %v", err)
 	}
-
-	gamelogic.PrintServerHelp()
 
 	isRunning := true
 

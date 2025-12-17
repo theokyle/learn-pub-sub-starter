@@ -73,7 +73,7 @@ func main() {
 		string(routing.WarRecognitionsPrefix),
 		fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix),
 		pubsub.SimpleQueueDurable,
-		handlerWar(game),
+		handlerWar(game, ch),
 	)
 	if err != nil {
 		log.Fatalf("Error subscribing to connection: %v", err)
